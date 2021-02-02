@@ -5,10 +5,10 @@ A tool for automatically liking all of a user's posts on OnlyFans
 
 <img src="https://raw.githubusercontent.com/Amenly/OnlyFans-AutoLiker/main/images/autoliker.gif">
 
-# Preface
+## Preface
 You know how sometimes there's OnlyFans creators who will message you saying something along the lines of: "Like all of my posts and I'll send you something special 😘"? Sometimes they might only have 20 or 30 posts, so it's not *too* bad. But what if they have *hundreds*? Maybe even ***thousands***? Well, this script will take of that for you.
  
-# Installation
+## Installation
 This tool only requires the [requests](https://github.com/psf/requests) library so if you already have it, you're good to go. Head on down to the [Configuration](#configuration) section!
  
 Otherwise, run the following in your terminal:
@@ -16,7 +16,7 @@ Otherwise, run the following in your terminal:
 $ pip3 install -r requirements.txt
 ```
  
-# Configuration
+## Configuration
 In order to use this, you are going to need to fill out a few fields in the `auth.json` file. Those fields are:
 
 ```json
@@ -71,7 +71,7 @@ But if you have 2FA enabled, then make sure the `auth_uniq_` field is filled.
 
 Once that's all done, you're finally ready to use it!
 
-# Usage
+## Usage
 In order to use the script, run the following in your terminal:
 
 ```sh
@@ -84,16 +84,42 @@ Replace `username` with the username of the creator whose posts you want to like
 $ python3 autoliker.py lenatheplugxxx
 ```
 
-# Things to Note
+### Command Line Arguments
+
+Here are the available commands that you can use:
+
+```
+postional arguments:
+ username          username of an OnlyFans content creator (that you're subscribed to)
+ 
+optional arguments:
+ -h, --help        show this help message and exit
+ -t, --timeline    only like timeline posts
+ -a, --archived    only like archived posts
+```
+
+### Examples
+
+*Only likes timeline posts (you could also use -t instead of --timeline)*:
+```sh
+$ python autoliker.py lenatheplug --timeline
+```
+
+*Only likes archived posts (you could also use --archived instead of -a)*:
+```sh
+$ python autoliker.py lenatheplug -a
+```
+
+## Things to Note
 1. The script runs slowly
 
-You may notice that the script sure does take its sweet, sweet time. This is intentional. I have the script set up to like post after post at a rate that seems 'organic' or 'human'. If you're using it on someone with a million posts, just let it run in the background and do something else.
+You may notice that the script sure does take its sweet, sweet time. This is intentional. I have the script set up to like post after post at a rate that seems 'natural' or 'human'. If you're using it on someone with a million posts, just let it run in the background and do something else.
 
 2. Use it at your own risk
 
 This kind of builds off of the first point. With the current speed, nothing bad should happen but I am ***not*** responsible for any unforeseen circumstances, whether good or unfortunate.
 
-# To Do
+## To Do
 
 * Add option to like posts at a faster rate
 * Add ability to unlike posts
