@@ -56,11 +56,11 @@ class OnlyFans(Logger):
         with open(auth_path) as f:
             auth = json.load(f)['auth']
             auth_id = auth['auth_id']
-            auth_uid_ = auth['auth_uid_']
+            auth_uid_ = auth['auth_uniq_']
             if not auth_uid_:
                 del auth['auth_uid_']
             else:
-                auth[f"auth_uid_{auth_id}"] = auth.pop('auth_uid_')
+                auth[f"auth_uid_{auth_id}"] = auth.pop('auth_uniq_')
             _cookies = [f'{k}={v}' for k, v in auth.items() if k !=
                         'user_agent' and k != 'app_token']
             headers = {
@@ -71,6 +71,7 @@ class OnlyFans(Logger):
             self.app_token = auth['app_token']
         # Other constructors:
         self.username = args.username
+        self.unlike = args.unlike
         self.id = None
         self.has_pinned_posts = None
         self.posts_count = None
@@ -133,10 +134,11 @@ class OnlyFans(Logger):
                     return array + posts
             else:
                 posts += array
-            unfavorited_posts = [
-                post for post in posts if not post['isFavorite']]
-            self.ids = [
-                post['id'] for post in unfavorited_posts if post['isOpened']]
+            if self.unlike:
+                posts = [post for post in posts if post['isFavorite']]
+            else:
+                posts = [post for post in posts if not post['isFavorite']]
+            self.ids = [post['id'] for post in posts if post['isOpened']]
         else:
             self.set_stop_true()
             self.log.error(
@@ -171,16 +173,18 @@ class OnlyFans(Logger):
                     return array + posts
             else:
                 posts += array
-            unfavorited_posts = [
-                post for post in posts if not post['isFavorite']]
-            self.archived_ids = [
-                post['id'] for post in unfavorited_posts if post['isOpened']]
+            if self.unlike:
+                posts = [post for post in posts if post['isFavorite']]
+            else:
+                posts = [post for post in posts if not post['isFavorite']]
+            self.archived_ids = [post['id']
+                                 for post in posts if post['isOpened']]
         else:
             self.set_stop_true()
             self.log.error(
                 f'Unable to scrape posts -- Received {r.status_code} STATUS CODE')
 
-    def like_posts(self, array, message='post'):
+    def handle_posts(self, array, message='post'):
         if not array:
             return None
         length = len(array)
@@ -191,11 +195,15 @@ class OnlyFans(Logger):
                 r = s.post(FAVORITE_URL.format(
                     post_id, self.id, self.app_token), headers=self.headers)
             if r.ok:
-                print(
-                    f'Successfully liked {message} ({c}/{length})', end='\r', flush=True)
+                if self.unlike:
+                    print(
+                        f'Successfully unliked {message} ({c}/{length})', end='\r', flush=True)
+                else:
+                    print(
+                        f'Successfully liked {message} ({c}/{length})', end='\r', flush=True)
             else:
                 self.log.error(
-                    f'Unable to like post -- Received {r.status_code} STATUS CODE')
+                    f"Unable to like post at 'onlyfans.com/{post_id}/{self.username}' -- Received {r.status_code} STATUS CODE")
 
     def set_stop_true(self):
         self.stop = True
@@ -217,6 +225,8 @@ def main():
                         help='only like timeline posts', action='store_true')
     parser.add_argument('-a', '--archived',
                         help='only like archived posts', action='store_true')
+    parser.add_argument('-u', '--unlike',
+                        help='removes your likes from posts', action='store_true')
     args = parser.parse_args()
     onlyfans = OnlyFans(args)
     t1 = Thread(target=onlyfans.spinner)
@@ -226,9 +236,9 @@ def main():
     if onlyfans.archived_posts_count:
         onlyfans.scrape_archived_posts()
     onlyfans.set_stop_true()
-    onlyfans.like_posts(onlyfans.ids)
+    onlyfans.handle_posts(onlyfans.ids)
     if onlyfans.archived_posts_count:
-        onlyfans.like_posts(onlyfans.archived_ids, 'archived post')
+        onlyfans.handle_posts(onlyfans.archived_ids, 'archived post')
 
 
 if __name__ == '__main__':
