@@ -53,7 +53,7 @@ Refresh the page if you don't see a field that starts with `init?app-token`. Onc
 
 Inside `cookie`, you should find your `sess` and `auth_id` cookies (as well as your '~~auth_uniq_~~' `auth_uid_` cookie if you have 2FA enabled). Copy their corresponding values and paste them into their corresponding spots in the `auth.json` file. Finally, copy what's next to the `user-agent` field and paste it into the `auth.json` file as well.
 
-*Note: OnlyFans recently changed the name of the auth_uniq_ cookie to auth_uid_. In order to keep our auth.json file similar to DIGITALCRIMINAL's auth.json, I decided to keep the field in the .json file as auth_uniq_. In other words, your auth_uid_ value should go where the auth_uniq_ field is!
+*Note: OnlyFans recently changed the name of the auth_uniq_ cookie to auth_uid_. In order to keep our auth.json file similar to DIGITALCRIMINAL's auth.json, I decided to keep the field in the .json file as auth_uniq_. In other words, your auth_uid_ value should go where the auth_uniq_ field is!*
 
 Your `auth.json` should look something like this:
 
@@ -61,7 +61,7 @@ Your `auth.json` should look something like this:
 {
     "auth": {
         "auth_id": "1698967",
-        "auth_uniq_": "", // This is the same as 'auth_uid_' !!!
+        "auth_uniq_": "",
         "sess": "yesny3cj2jku169pk0ked1g2p",
         "app_token": "33d57ade8c02dbc5a333db99ff9ae26a",
         "user_agent": "Mozilla/420.0 (Windows NT 420.0; Win420; x420) AppleWebKit/420.420 (KHTML, like Gecko) Chrome/420.420.420.420 Safari/420.420"
