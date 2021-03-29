@@ -190,7 +190,7 @@ class OnlyFans(Logger):
         length = len(array)
         enum = enumerate(array, 1)
         for c, post_id in enum:
-            time.sleep(random.uniform(1, 2.25))
+            time.sleep(random.uniform(0.8, 1))
             with requests.Session() as s:
                 r = s.post(FAVORITE_URL.format(
                     post_id, self.id, self.app_token), headers=self.headers)
