@@ -58,7 +58,7 @@ class OnlyFans(Logger):
             auth_id = auth['auth_id']
             auth_uid_ = auth['auth_uniq_']
             if not auth_uid_:
-                del auth['auth_uid_']
+                del auth['auth_uniq_']
             else:
                 auth[f"auth_uid_{auth_id}"] = auth.pop('auth_uniq_')
             _cookies = [f'{k}={v}' for k, v in auth.items() if k !=
