@@ -1,3 +1,7 @@
+***Officially Archived***
+
+This repo will no longer be maintained and its functionality (the ability to like and unlike posts) has been moved to my newer repo which will be actively maintained: [onlyfans-scraper](https://github.com/Amenly/onlyfans-scraper)
+
 # OnlyFans-AutoLiker
 ![Python Version 3.8+](https://img.shields.io/badge/python-3.8-%2338AFF0)
 
