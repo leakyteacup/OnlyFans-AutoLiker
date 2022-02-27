@@ -1,23 +1,21 @@
-import os
-import sys
-import json
 import argparse
 import logging
 import time
 import random
 import math
 from threading import Thread
+import hashlib
+from urllib.parse import urlparse
 
 import requests
 
 from autoliker.constants import (
     PROFILE_URL,
     POSTS_URL,
-    POSTS_100_URL,
+    POSTS_50_URL,
     ARCHIVED_POSTS_URL,
-    ARCHIVED_POSTS_100_URL,
+    ARCHIVED_POSTS_50_URL,
     FAVORITE_URL,
-    HEADERS,
     ICONS
 )
 
@@ -51,24 +49,14 @@ class OnlyFans(Logger):
         # Parse args:
         self.timeline = args.timeline
         self.archived = args.archived
+
         # Create authentication:
-        auth_path = os.path.join(sys.path[0], 'auth.json')
-        with open(auth_path) as f:
-            auth = json.load(f)['auth']
-            auth_id = auth['auth_id']
-            auth_uid_ = auth['auth_uniq_']
-            if not auth_uid_:
-                del auth['auth_uniq_']
-            else:
-                auth[f"auth_uid_{auth_id}"] = auth.pop('auth_uniq_')
-            _cookies = [f'{k}={v}' for k, v in auth.items() if k !=
-                        'user_agent' and k != 'app_token']
-            headers = {
-                "user-agent": auth['user_agent'], 'cookie': ";".join(_cookies)}
-            for k, v in HEADERS.items():
-                headers[k] = v
-            self.headers = headers
-            self.app_token = auth['app_token']
+        self.auth_id = "your user auth ID"
+        self.cookies = "put your cookies here...fp=; sess=; csrf=; ref_src=; auth_id=; st=;"
+        self.user_agent = "Mozilla/5.0...this is your user agent"
+        self.app_token = "whatever app token is at the moment"
+        self.x_bc ="your x-bc"
+
         # Other constructors:
         self.username = args.username
         self.unlike = args.unlike
@@ -80,10 +68,42 @@ class OnlyFans(Logger):
         self.archived_ids = None
         self.stop = False
 
+    def get_dynamic_rules(self):
+        r = requests.get("https://raw.githubusercontent.com/DATAHOARDERS/dynamic-rules/main/onlyfans.json")
+        return r.json()
+
+    def create_signed_headers(self, link: str, auth_id: int, dynamic_rules: dict):
+        final_time = str(int(round(time.time()*1000.0)))
+        path = urlparse(link).path
+        query = urlparse(link).query
+        path = path if not query else f"{path}?{query}"
+        # print(path)
+        a = [dynamic_rules["static_param"], final_time, path, str(auth_id)]
+        msg = "\n".join(a)
+        message = msg.encode("utf-8")
+        hash_object = hashlib.sha1(message)
+        sha_1_sign = hash_object.hexdigest()
+        sha_1_b = sha_1_sign.encode("ascii")
+        checksum = (
+                sum([sha_1_b[number] for number in dynamic_rules["checksum_indexes"]])
+                + dynamic_rules["checksum_constant"]
+        )
+        headers = {}
+        headers["sign"] = dynamic_rules["format"].format(sha_1_sign, abs(checksum))
+        headers["time"] = final_time
+        headers["x-bc"] = self.x_bc
+        headers["user-agent"] = self.user_agent
+        headers["cookie"] = self.cookies
+        headers["app-token"] = self.app_token
+        headers["accept"] = "application/json, text/plain, */*"
+        headers["accept-encoding"] = "gzip, deflate, br"
+        # print(headers)
+        return headers
+
     def scrape_user(self):
         with requests.Session() as s:
-            r = s.get(PROFILE_URL.format(
-                self.username, self.app_token), headers=self.headers)
+            link = PROFILE_URL + self.username
+            r = s.get(link, headers=self.create_signed_headers(link, 0, self.get_dynamic_rules()))
         self.log.debug(r.status_code)
         if r.ok:
             user = r.json()
@@ -102,23 +122,25 @@ class OnlyFans(Logger):
                 return None
             if self.has_pinned_posts:
                 with requests.Session() as s:
-                    r = s.get(
-                        POSTS_URL.format(
-                            self.id, self.posts_count, 1, self.app_token), headers=self.headers)
+                    link = POSTS_URL.format(self.id, self.posts_count, 1)
+                    temp_headers = self.create_signed_headers(link, self.auth_id, self.get_dynamic_rules())
+                    temp_headers["user-id"] = self.auth_id
+                    r = s.get(link, headers=temp_headers)
                 if r.ok:
                     array = r.json()
                 else:
                     self.set_stop_true()
                     self.log.error(
                         f'Unable to scrape pinned posts -- Received {r.status_code} STATUS CODE')
-            if self.posts_count > 100:
-                cycles = math.floor(self.posts_count / 100)
-        url = POSTS_URL if not time else POSTS_100_URL
+            if self.posts_count > 50:
+                cycles = math.floor(self.posts_count / 50)
+        url = POSTS_URL if not time else POSTS_50_URL
         slot = pinned if not time else time
         with requests.Session() as s:
-            r = s.get(url.format(
-                self.id, self.posts_count, slot, self.app_token),
-                headers=self.headers)
+            link = url.format(self.id, self.posts_count, slot)
+            temp_headers = self.create_signed_headers(link, self.auth_id, self.get_dynamic_rules())
+            temp_headers["user-id"] = self.auth_id
+            r = s.get(link, headers=temp_headers)
         if r.ok:
             posts = r.json()
             if cycles:
@@ -148,16 +170,20 @@ class OnlyFans(Logger):
         if not array:
             if self.timeline:
                 return None
-            if self.archived_posts_count > 100:
-                cycles = math.floor(self.archived_posts_count / 100)
-        url = ARCHIVED_POSTS_URL if not time else ARCHIVED_POSTS_100_URL
+            if self.archived_posts_count > 50:
+                cycles = math.floor(self.archived_posts_count / 50)
+        url = ARCHIVED_POSTS_URL if not time else ARCHIVED_POSTS_50_URL
         with requests.Session() as s:
             if time:
-                r = s.get(url.format(
-                    self.id, self.archived_posts_count, time, self.app_token), headers=self.headers)
+                link = url.format(self.id, self.archived_posts_count, time)
+                temp_headers = self.create_signed_headers(link, self.auth_id, self.get_dynamic_rules())
+                temp_headers["user-id"] = self.auth_id
+                r = s.get(link, headers=temp_headers)
             else:
-                r = s.get(url.format(
-                    self.id, self.archived_posts_count, self.app_token), headers=self.headers)
+                link = url.format(self.id, self.archived_posts_count)
+                temp_headers = self.create_signed_headers(link, self.auth_id, self.get_dynamic_rules())
+                temp_headers["user-id"] = self.auth_id
+                r = s.get(link, headers=temp_headers)
         if r.ok:
             posts = r.json()
             if cycles:
@@ -190,17 +216,19 @@ class OnlyFans(Logger):
         length = len(array)
         enum = enumerate(array, 1)
         for c, post_id in enum:
-            time.sleep(random.uniform(0.8, 1))
+            time.sleep(random.uniform(1, 2.25))
             with requests.Session() as s:
-                r = s.post(FAVORITE_URL.format(
-                    post_id, self.id, self.app_token), headers=self.headers)
+                link = FAVORITE_URL.format(post_id, self.id)
+                temp_headers = self.create_signed_headers(link, self.auth_id, self.get_dynamic_rules())
+                temp_headers["user-id"] = self.auth_id
+                r = s.post(link, headers=temp_headers)
             if r.ok:
                 if self.unlike:
                     print(
-                        f'Successfully unliked {message} ({c}/{length})', end='\r', flush=True)
+                        f'Successfully unliked {message} ({c}/{length})')
                 else:
                     print(
-                        f'Successfully liked {message} ({c}/{length})', end='\r', flush=True)
+                        f'Successfully liked {message} ({c}/{length})')
             else:
                 self.log.error(
                     f"Unable to like post at 'onlyfans.com/{post_id}/{self.username}' -- Received {r.status_code} STATUS CODE")
@@ -236,6 +264,7 @@ def main():
     if onlyfans.archived_posts_count:
         onlyfans.scrape_archived_posts()
     onlyfans.set_stop_true()
+    print(f"Found {len(onlyfans.ids)} posts to process.")
     onlyfans.handle_posts(onlyfans.ids)
     if onlyfans.archived_posts_count:
         onlyfans.handle_posts(onlyfans.archived_ids, 'archived post')
